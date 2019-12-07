@@ -2,14 +2,25 @@
 
 #include <stdio.h>
 #include <stdlib.h>
+#include <time.h>
 
 #include "cache/cache.h"
 
 #include "vtim.h"
 #include "vcc_time_if.h"
 
+/* Varnish < 6.2 compat */
+#ifndef VPFX
+#define VPFX(a) vmod_##a
+#define VARGS(a) vmod_##a##_arg
+#define VENUM(a) vmod_enum_##a
+#define VEVENT(a) a
+#else
+#define VEVENT(a) VPFX(a)
+#endif
+
 const size_t infosz = 64;
-char	     *info;
+char *info;
 
 /*
  * handle vmod internal state, vmod init/fini and/or varnish callback
@@ -19,19 +30,20 @@ char	     *info;
  * real-world vmod, a fixed-sized buffer should be a global variable
  */
 
-int v_matchproto_(vmod_event_f)
-vmod_event_function(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
+int
+	VEVENT(event_function)(VRT_CTX, struct VPFX(priv) * priv, enum vcl_event_e e)
 {
-	char	   ts[VTIM_FORMAT_SIZE];
+	char ts[VTIM_FORMAT_SIZE];
 	const char *event = NULL;
 
-	(void) ctx;
-	(void) priv;
+	(void)ctx;
+	(void)priv;
 
-	switch (e) {
+	switch (e)
+	{
 	case VCL_EVENT_LOAD:
 		info = malloc(infosz);
-		if (! info)
+		if (!info)
 			return (-1);
 		event = "loaded";
 		break;
@@ -56,29 +68,33 @@ vmod_event_function(VRT_CTX, struct vmod_priv *priv, enum vcl_event_e e)
 }
 
 VCL_STRING
-vmod_info(VRT_CTX)
+VPFX(info)(VRT_CTX)
 {
-	(void) ctx;
+	(void)ctx;
 
 	return (info);
 }
 
-VCL_STRING
-vmod_hello(VRT_CTX, VCL_STRING name)
-{
-	char *p;
-	unsigned u, v;
+VCL_INT
+VPFX(get_unix)(VRT_CTX)
+{	
+	return (unsigned long)time(NULL);
+}
 
-	u = WS_Reserve(ctx->ws, 0); /* Reserve some work space */
-	p = ctx->ws->f;		/* Front of workspace area */
-	v = snprintf(p, u, "Hello, %s", name);
-	v++;
-	if (v > u) {
-		/* No space, reset and leave */
-		WS_Release(ctx->ws, 0);
-		return (NULL);
-	}
-	/* Update work space with what we've used */
-	WS_Release(ctx->ws, v);
-	return (p);
+VCL_INT
+VPFX(next_day)(VRT_CTX, VCL_INT time)
+{
+	struct tm *ts;
+    ts = localtime(&time);
+    ts->tm_mday++;
+    ts->tm_hour = 0;
+    ts->tm_min = 0;
+    ts->tm_sec = 0;
+    return (int)mktime(ts);
+}
+
+VCL_DURATION
+VPFX(duration_s)(VRT_CTX, VCL_INT time)
+{
+	return (double) time;
 }

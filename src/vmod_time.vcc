@@ -24,7 +24,9 @@ $Function STRING info()
 Returns a string set by the last VCL event, demonstrating the use of
 event functions.
 
-$Function STRING hello(STRING)
+$Function INT get_unix()
+$Function INT next_day(INT time)
+$Function DURATION duration_s(INT time)
 
 The different functions provided by the VMOD should also have their own
 embedded documentation. This section is for the hello() function.
